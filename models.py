@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 class conv_block(nn.Module):
     # conv -> batch norm -> relu -> conv -> batch norm -> relu
@@ -53,6 +54,13 @@ class unet(nn.Module):
         self.conv10 = nn.Conv2d(64, n_classes, 1)
         
 
+        '''
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal(m.weight.data, a=0, mode='fan_out')
+                if m.bias is not None:
+                    m.bias.data.zero_()
+        '''
 
     def forward(self, input):
         
@@ -86,6 +94,8 @@ class unet(nn.Module):
         z9 = self.conv9(x9)
         
         z = self.conv10(z9)
+        
+        z = F.sigmoid(z)
         
         return z
     
