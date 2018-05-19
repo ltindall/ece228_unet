@@ -10,6 +10,6 @@
 2. Unzip [datasets.zip](datasets.zip) into a directory called datasets 
 
 # Run
-1. Jupyter notebook for [Kaggle Data Science Bowl 2018](https://www.kaggle.com/c/data-science-bowl-2018) can be found at [kaggle_nucleus.ipynb](kabble_nucleus.ipynb)
+1. Jupyter notebook for [Kaggle Data Science Bowl 2018](https://www.kaggle.com/c/data-science-bowl-2018) can be found at [kaggle_nucleus.ipynb](kaggle_nucleus.ipynb)
 2. Jupyter notebook for NCMIR mitochondria dataset can be found at [mitochondria.ipynb](mitochondria.ipynb)
 
