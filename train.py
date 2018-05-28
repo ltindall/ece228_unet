@@ -9,6 +9,7 @@ def f1_score(y_true, y_pred, threshold):
 
 
     y_pred = (y_pred >= threshold).astype(np.uint8)
+    
     true_positive = np.sum(y_pred * y_true)
 
     total_positive = np.sum(y_pred)
@@ -22,7 +23,7 @@ def f1_score(y_true, y_pred, threshold):
     return f1, precision, recall
 
 
-def eval_net(GPU, model, inputs, targets, criterion): 
+def eval_net(GPU, model, EMDataLoader, criterion): 
     #model.eval()
     
     avg_loss = 0
@@ -30,6 +31,53 @@ def eval_net(GPU, model, inputs, targets, criterion):
     avg_precision = 0
     avg_recall = 0
     
+    dataset_size = 0
+    
+    for i, data in enumerate(EMDataLoader):
+        
+        imgs = data[0]
+        lbls = data[1]
+        
+        #print("max y_true = ",torch.max(lbls))
+        #print("min y_true = ",torch.min(lbls))
+        
+        for (img,lbl) in zip(imgs,lbls): 
+        
+            # convert to pytorch cuda variable 
+            x = Variable(torch.FloatTensor(img)).detach()
+            target = Variable(torch.FloatTensor(lbl)).detach()
+            if GPU: 
+                x = x.cuda()
+                target = target.cuda()
+
+            x = torch.unsqueeze(x,0)
+            target = torch.unsqueeze(target, 0)
+
+            # get output and loss 
+            output = model(x)
+            loss = criterion(output, target)
+
+            avg_loss += loss.data[0] 
+
+            f1, precision, recall = f1_score(target.data.cpu().numpy(), output.data.cpu().numpy(), 0.1)
+
+            avg_f1_score += f1
+            avg_precision += precision
+            avg_recall += recall
+            
+            dataset_size += 1
+
+
+    avg_loss /= dataset_size
+    avg_f1_score /= dataset_size
+    avg_precision /= dataset_size
+    avg_recall /= dataset_size
+
+    #model.train()
+    
+    return avg_loss, avg_f1_score, avg_precision, avg_recall
+    
+    '''
     for (img,lbl) in zip(inputs,targets): 
             
         # get batch of images and labels 
@@ -68,13 +116,15 @@ def eval_net(GPU, model, inputs, targets, criterion):
     #model.train()
     
     return avg_loss, avg_f1_score, avg_precision, avg_recall
+    '''
     
 
 
-def training(GPU, model, inputs, targets,val,val_target, optimizer, criterion, epochs, batch_size):
+def training(GPU, TrainDataLoader, ValDataLoader, ValDataset, model, optimizer, criterion, epochs, batch_size):
     model.train()
     
-    num_batches = int(len(inputs) / batch_size)
+    #num_batches = int(len(inputs) / batch_size)
+    num_batches = len(TrainDataLoader)
     
     tr_loss = []
     tr_f1 = []
@@ -86,17 +136,22 @@ def training(GPU, model, inputs, targets,val,val_target, optimizer, criterion, e
     val_prec = []
     val_rec = []
     
+    
     for epoch in range(epochs): 
         
         avg_loss = 0
-        for i in range(num_batches):
+        for i, data in enumerate(TrainDataLoader):
             
+            '''
             if i*batch_size >= len(inputs):
                 break
                 
             # get batch of images and labels 
             imgs = inputs[i*batch_size:(i+1)*batch_size]
             lbls = targets[i*batch_size:(i+1)*batch_size]
+            '''
+            imgs = data[0]
+            lbls = data[1]
             
             # convert to pytorch cuda variable 
             x = Variable(torch.FloatTensor(imgs))
@@ -115,18 +170,16 @@ def training(GPU, model, inputs, targets,val,val_target, optimizer, criterion, e
             loss.backward()
             optimizer.step()
             
-            
-            avg_loss += loss.data[0]
-            #print("loss = ",loss.data[0])
-            
 
-        avg_loss /= num_batches
-        #print('epoch: ' + str(epoch) + ', train loss: ' + str(avg_loss))
-        
         
         # do one random prediction 
-        i = np.random.randint(0,val.shape[0])        
-        val_img = val[i]
+        i = np.random.randint(0,len(ValDataset))   
+        
+        val_img,val_target = ValDataset.__getitem__(i)
+        
+        
+        
+        #val_img = val[i]
         val_img = np.expand_dims(val_img, axis=0)
         val_img = Variable(torch.FloatTensor(val_img))
         if GPU: 
@@ -135,27 +188,28 @@ def training(GPU, model, inputs, targets,val,val_target, optimizer, criterion, e
         prediction = prediction.data.cpu().numpy()
         prediction = prediction.squeeze()
         
-        
-        v_img = np.moveaxis(val[i],0,-1) if val[i].shape[0] == 3 else np.squeeze(val[i])
+        val_img = val_img.data.cpu().numpy()
+        v_img = np.moveaxis(val_img,0,-1) if val_img.shape[0] == 3 else np.squeeze(val_img)
         v_img = 127*(v_img+1)
         
         # plot predication and real label 
         f, (ax1,ax2,ax3) = plt.subplots(1,3, sharey=True,figsize=(15,5), dpi=80)
         if v_img.shape[-1] == 3: 
+            
             ax1.imshow(v_img.astype(np.uint8))
         else: 
-            ax1.imshow(v_img.astype(np.uint8),cmap="gray")
+            ax1.imshow(v_img, cmap="gray")
         ax1.set_title("Image")
         ax2.imshow(prediction, cmap="gray")
         ax2.set_title("Prediction")
-        ax3.imshow(np.squeeze(val_target[i]), cmap="gray")
+        ax3.imshow(np.squeeze(val_target), cmap="gray")
         ax3.set_title("Real label")
         plt.suptitle("Epoch: %d" %(epoch))
         plt.show()
         
         #if epoch % 10 == 0: 
-        train_avg_loss, train_avg_f1_score, train_avg_precision, train_avg_recall = eval_net(GPU, model, inputs, targets, criterion)
-        val_avg_loss, val_avg_f1_score, val_avg_precision, val_avg_recall = eval_net(GPU, model, val, val_target, criterion)
+        train_avg_loss, train_avg_f1_score, train_avg_precision, train_avg_recall = eval_net(GPU, model, TrainDataLoader, criterion)
+        val_avg_loss, val_avg_f1_score, val_avg_precision, val_avg_recall = eval_net(GPU, model, ValDataLoader, criterion)
 
         tr_loss.append(train_avg_loss)
         tr_f1.append(train_avg_f1_score)
