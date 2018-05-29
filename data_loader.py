@@ -84,46 +84,7 @@ class EM_Dataset(Dataset):
             random.seed(seed)
             label = t(label)
 
-        #label[label!=0]=1
-        #print("max lbl = ",torch.max(label))
-        #print("min lbl = ",torch.min(label))
         img = normalize(img)
         
         return img,label
 
-'''
-if __name__ == "main": 
-    data_dir = './datasets/mitochondria/training/images/'
-
-    label_dir = './datasets/mitochondria/training/labels/'
-
-    img_resize = 128 
-
-    MitoDataset = EM_Dataset(data_dir, label_dir, img_resize)
-
-
-    batch_size = 7
-    max_epochs = 1
-
-    MitoDataLoader = DataLoader(MitoDataset,
-                                 batch_size=batch_size,
-                                 shuffle=True,
-                                 num_workers=4)
-
-
-    for epoch in range(max_epochs):
-
-        for i, data in enumerate(MitoDataLoader):
-            print("[%d/%d][%d/%d]"%(epoch+1, max_epochs, i+1, len(MitoDataLoader)))
-
-
-            imgs = data[0]
-            labels = data[1]
-
-            plt.imshow(np.squeeze(imgs[0]),cmap="gray")
-            plt.show()
-
-
-            plt.imshow(np.squeeze(labels[0]),cmap="gray")
-            plt.show()
-'''

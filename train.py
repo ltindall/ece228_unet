@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from matplotlib import pyplot as plt
+import os
 
 
 
@@ -24,7 +25,7 @@ def f1_score(y_true, y_pred, threshold):
 
 
 def eval_net(GPU, model, EMDataLoader, criterion): 
-    #model.eval()
+    model.eval()
     
     avg_loss = 0
     avg_f1_score = 0
@@ -38,8 +39,6 @@ def eval_net(GPU, model, EMDataLoader, criterion):
         imgs = data[0]
         lbls = data[1]
         
-        #print("max y_true = ",torch.max(lbls))
-        #print("min y_true = ",torch.min(lbls))
         
         for (img,lbl) in zip(imgs,lbls): 
         
@@ -73,57 +72,37 @@ def eval_net(GPU, model, EMDataLoader, criterion):
     avg_precision /= dataset_size
     avg_recall /= dataset_size
 
-    #model.train()
-    
-    return avg_loss, avg_f1_score, avg_precision, avg_recall
-    
-    '''
-    for (img,lbl) in zip(inputs,targets): 
-            
-        # get batch of images and labels 
-        #imgs = inputs[i*batch_size:(i+1)*batch_size]
-        #lbls = targets[i*batch_size:(i+1)*batch_size]
-
-        
-        # convert to pytorch cuda variable 
-        x = Variable(torch.FloatTensor(img)).detach()
-        target = Variable(torch.FloatTensor(lbl)).detach()
-        if GPU: 
-            x = x.cuda()
-            target = target.cuda()
-
-        x = torch.unsqueeze(x,0)
-        target = torch.unsqueeze(target, 0)
-        
-        # get output and loss 
-        output = model(x)
-        loss = criterion(output, target)
-
-        avg_loss += loss.data[0]
-
-        f1, precision, recall = f1_score(lbl, output.data.cpu().numpy(), 0.1)
-        
-        avg_f1_score += f1
-        avg_precision += precision
-        avg_recall += recall
-
-
-    avg_loss /= len(targets)
-    avg_f1_score /= len(targets)
-    avg_precision /= len(targets)
-    avg_recall /= len(targets)
-
-    #model.train()
-    
-    return avg_loss, avg_f1_score, avg_precision, avg_recall
-    '''
-    
-
-
-def training(GPU, TrainDataLoader, ValDataLoader, ValDataset, model, optimizer, criterion, epochs, batch_size):
     model.train()
     
-    #num_batches = int(len(inputs) / batch_size)
+    return avg_loss, avg_f1_score, avg_precision, avg_recall
+    
+    
+def load_pretrained_models(model, output_dir):
+    
+    
+    if os.path.isdir(output_dir):
+        model_list = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
+
+        model_list.sort()
+        
+        if len(model_list) > 0: 
+            model.load_state_dict(torch.load('%s/%s' % (output_dir, model_list[-1])))
+            print("loaded model %s" % model_list[-1])
+        else: 
+            print("No model loaded. Fresh start.")
+           
+
+    return model
+
+
+
+
+def training(GPU, TrainDataLoader, ValDataLoader, ValDataset, model, optimizer, criterion, epochs, batch_size, output_dir, warm_start=True):
+    
+    
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+        
     num_batches = len(TrainDataLoader)
     
     tr_loss = []
@@ -136,20 +115,16 @@ def training(GPU, TrainDataLoader, ValDataLoader, ValDataset, model, optimizer, 
     val_prec = []
     val_rec = []
     
+    if warm_start:
+         model = load_pretrained_models(model, output_dir)
+            
+    model.train()
     
     for epoch in range(epochs): 
         
         avg_loss = 0
         for i, data in enumerate(TrainDataLoader):
             
-            '''
-            if i*batch_size >= len(inputs):
-                break
-                
-            # get batch of images and labels 
-            imgs = inputs[i*batch_size:(i+1)*batch_size]
-            lbls = targets[i*batch_size:(i+1)*batch_size]
-            '''
             imgs = data[0]
             lbls = data[1]
             
@@ -250,5 +225,9 @@ def training(GPU, TrainDataLoader, ValDataLoader, ValDataset, model, optimizer, 
         print("epoch [%d/%d] " % (epoch,epochs))
         print("train loss = %.4f, train f1 score = %.4f \ntrain precision = %.4f, train recall = %.4f \n" % (train_avg_loss,train_avg_f1_score, train_avg_precision,train_avg_recall))
         print("val loss = %.4f, val f1 score = %.4f \nval precision = %.4f, val recall = %.4f \n\n" % (val_avg_loss,val_avg_f1_score,val_avg_precision,val_avg_recall))
+        
+        if epoch % 100 == 0: 
+            torch.save(model.state_dict(), '%s/model_epoch%d.pth' % (output_dir, epoch))
+
         
         
