@@ -72,10 +72,10 @@ def mean_avg_prec(y_true, y_pred, threshold):
         tp = np.count_nonzero(matches)  # True positives
         fp = num_pred - tp  # False positives
         fn = num_true - tp  # False negatives
-        if tp+fp+fn == 0:  
+        if tp+fp == 0:  
             p += 1
         else:
-            p += tp / (tp + fp + fn)
+            p += tp / (tp + fp)
             
 
         
