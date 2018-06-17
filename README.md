@@ -17,5 +17,5 @@
 3. Jupyter notebook for ISBI Challenge 2012 can be found at [isbi_2012.ipynb](isbi_2012.ipynb)   
 4. Jupyter notebook for ISBI Challenge 2013 can be found at [isbi_2013.ipynb](isbi_2013.ipynb)   
 5. Jupyter notebook for EPFL CVLab mitochondria dataset can be found at [epfl.ipynb](epfl.ipynb)  
-6. All of the notebooks also have corresponding *.py scripts which can be run from a terminal
+6. All of the notebooks have corresponding *.py scripts which can be run from a terminal
 
